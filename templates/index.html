@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Translator</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; color: #333; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #4a90e2; }
+        
+        /* Tabs */
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #eee; }
+        .tab-btn { flex: 1; padding: 15px; border: none; background: none; cursor: pointer; font-size: 16px; font-weight: bold; color: #666; }
+        .tab-btn.active { color: #4a90e2; border-bottom: 3px solid #4a90e2; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Forms */
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; }
+        select, input[type="file"], textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; box-sizing: border-box; }
+        textarea { height: 150px; resize: vertical; }
+        
+        button.submit-btn { width: 100%; padding: 12px; background-color: #4a90e2; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; margin-top: 10px; }
+        button.submit-btn:hover { background-color: #357abd; }
+
+        .result-box { margin-top: 20px; padding: 15px; background: #eef; border-radius: 5px; border: 1px solid #ccd; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🌐 Python Translator</h1>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="openTab('text')">Text Translator</button>
+        <button class="tab-btn" onclick="openTab('file')">File Translator</button>
+    </div>
+
+    <!-- Text Translation Tab -->
+    <div id="text" class="tab-content active">
+    <div class="form-group">
+        <label>Source Language</label>
+        <select name="src_lang">
+            {% for lang in languages %}
+            <option value="{{ lang }}" {% if lang == selected_src %}selected{% endif %}>{{ lang }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label>Destination Language</label>
+        <select name="dest_lang">
+            {% for lang in languages %}
+            <option value="{{ lang }}" {% if lang == selected_dest %}selected{% endif %}>{{ lang }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label>Enter Text</label>
+        <textarea name="text" placeholder="Type something here...">{{ original_text }}</textarea>
+    </div>
+
+    <div class="result-box">
+        <h3>Result:</h3>
+        <p id="translated-text-display" style="white-space: pre-wrap;">{{ translated_text }}</p>
+    </div>
+</div>
+
+    <!-- File Translation Tab -->
+    <div id="file" class="tab-content">
+        <form action="/upload" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label>Upload File (.txt, .pdf, .docx)</label>
+                <input type="file" name="file" required>
+            </div>
+            <div class="form-group">
+                <label>Source Language</label>
+                <select name="src_lang">
+                    {% for lang in languages %}
+                    <option value="{{ lang }}">{{ lang }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Destination Language</label>
+                <select name="dest_lang">
+                    {% for lang in languages %}
+                    <option value="{{ lang }}" {% if lang == 'Hindi' %}selected{% endif %}>{{ lang }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="submit-btn">Upload & Translate</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabName).classList.add('active');
+        event.target.classList.add('active');
+    }
+
+    
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+
+    <script>
+        var socket = io();
+
+        // Get the elements from your HTML (Double check these IDs match yours!)
+        const inputArea = document.querySelector('textarea[name="text"]'); 
+        const outputArea = document.getElementById('translated-text-display');
+        const srcLang = document.querySelector('select[name="src_lang"]');
+        const destLang = document.querySelector('select[name="dest_lang"]');
+
+        // Listen for typing
+        inputArea.addEventListener('input', () => {
+            socket.emit('realtime_translate', {
+                text: inputArea.value,
+                src_lang: srcLang.value,
+                dest_lang: destLang.value
+            });
+        });
+
+        // Update the screen when translation arrives
+        socket.on('update_result', (data) => {
+            if(outputArea) {
+                outputArea.innerText = data.translated_text;
+            }
+        });
+        let timeout = null;
+
+inputArea.addEventListener('input', () => {
+    // Clear the timer every time the user types a new letter
+    clearTimeout(timeout);
+
+    // Set a new timer to wait 300ms after the last keystroke
+    timeout = setTimeout(() => {
+        socket.emit('realtime_translate', {
+            text: inputArea.value,
+            src_lang: srcLang.value,
+            dest_lang: destLang.value
+        });
+    }, 300); // 300ms is the "sweet spot" for real-time feel
+});
+    </script>
+    
+</body>
+</html>
