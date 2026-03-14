@@ -1,4 +1,6 @@
 flask
-googletrans==4.0.0-rc1
-pdfplumber
-python-docx
+flask-socketio
+eventlet
+googletrans==3.1.0a0
+python-engineio==4.13.1
+python-socketio==5.16.1
