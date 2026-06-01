@@ -4,4 +4,10 @@ flask
 flask-socketio
 googletrans==3.1.0a0
 python-engineio==4.13.1
+<<<<<<< HEAD
 python-socketio==5.16.1
+=======
+python-socketio==5.16.1
+pdfplumber
+python-docx
+>>>>>>> a20cb47292682f0983f1508dbdbacb3a680217c8

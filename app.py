@@ -115,5 +115,6 @@ def upload_file():
     except Exception as e:
         return f"An error occurred during translation: {str(e)}", 500
 
+# Keep your socketio setup the same
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+    socketio.run(app)
