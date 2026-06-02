@@ -26,6 +26,11 @@
         button.submit-btn:hover { background-color: #357abd; }
 
         .result-box { margin-top: 20px; padding: 15px; background: #eef; border-radius: 5px; border: 1px solid #ccd; }
+        
+        /* Layout styling for the action buttons */
+        .action-buttons { display: flex; gap: 10px; margin-top: 15px; justify-content: flex-end; }
+        .action-btn { padding: 6px 12px; font-size: 13px; border: 1px solid #4a90e2; background: white; color: #4a90e2; border-radius: 4px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; }
+        .action-btn:hover { background: #4a90e2; color: white; }
     </style>
 </head>
 <body>
@@ -38,36 +43,39 @@
         <button class="tab-btn" onclick="openTab('file')">File Translator</button>
     </div>
 
-    <!-- Text Translation Tab -->
     <div id="text" class="tab-content active">
-    <div class="form-group">
-        <label>Source Language</label>
-        <select name="src_lang">
-            {% for lang in languages %}
-            <option value="{{ lang }}" {% if lang == selected_src %}selected{% endif %}>{{ lang }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="form-group">
-        <label>Destination Language</label>
-        <select name="dest_lang">
-            {% for lang in languages %}
-            <option value="{{ lang }}" {% if lang == selected_dest %}selected{% endif %}>{{ lang }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="form-group">
-        <label>Enter Text</label>
-        <textarea name="text" placeholder="Type something here...">{{ original_text }}</textarea>
+        <div class="form-group">
+            <label>Source Language</label>
+            <select name="src_lang">
+                {% for lang in languages %}
+                <option value="{{ lang }}" {% if lang == selected_src %}selected{% endif %}>{{ lang }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Destination Language</label>
+            <select name="dest_lang">
+                {% for lang in languages %}
+                <option value="{{ lang }}" {% if lang == selected_dest %}selected{% endif %}>{{ lang }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Enter Text</label>
+            <textarea name="text" placeholder="Type something here...">{{ original_text }}</textarea>
+        </div>
+
+        <div class="result-box">
+            <h3>Result:</h3>
+            <p id="translated-text-display" style="white-space: pre-wrap;">{{ translated_text }}</p>
+            
+            <div class="action-buttons">
+                <button class="action-btn" onclick="copyTranslation()">📋 Copy</button>
+                <button class="action-btn" onclick="listenTranslation()">🔊 Listen</button>
+            </div>
+        </div>
     </div>
 
-    <div class="result-box">
-        <h3>Result:</h3>
-        <p id="translated-text-display" style="white-space: pre-wrap;">{{ translated_text }}</p>
-    </div>
-</div>
-
-    <!-- File Translation Tab -->
     <div id="file" class="tab-content">
         <form action="/upload" method="POST" enctype="multipart/form-data">
             <div class="form-group">
@@ -102,54 +110,83 @@
         document.getElementById(tabName).classList.add('active');
         event.target.classList.add('active');
     }
-
-    
 </script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 
-    <script>
-        var socket = io({
-    transports: ['websocket', 'polling']
-});
-        
+<script>
+    var socket = io({
+        transports: ['websocket', 'polling']
+    });
 
-        // Get the elements from your HTML (Double check these IDs match yours!)
-        const inputArea = document.querySelector('textarea[name="text"]'); 
-        const outputArea = document.getElementById('translated-text-display');
-        const srcLang = document.querySelector('select[name="src_lang"]');
-        const destLang = document.querySelector('select[name="dest_lang"]');
+    // Get the elements from your HTML
+    const inputArea = document.querySelector('textarea[name="text"]'); 
+    const outputArea = document.getElementById('translated-text-display');
+    const srcLang = document.querySelector('select[name="src_lang"]');
+    const destLang = document.querySelector('select[name="dest_lang"]');
 
-        // Listen for typing
-        inputArea.addEventListener('input', () => {
+    // Language configuration mapping for Text-To-Speech engine
+    const SPEECH_LANG_CODES = {
+        "English": "en-US",
+        "Hindi": "hi-IN",
+        "Bengali": "bn-IN",
+        "Marathi": "mr-IN",
+        "Urdu": "ur-PK",
+        "Telugu": "te-IN",
+        "Tamil": "ta-IN",
+        "Kannada": "kn-IN",
+        "Malayalam": "ml-IN"
+    };
+
+    // Update the screen when translation arrives from backend
+    socket.on('update_result', (data) => {
+        if(outputArea) {
+            outputArea.innerText = data.translated_text;
+        }
+    });
+
+    let timeout = null;
+    inputArea.addEventListener('input', () => {
+        // Clear the timer every time the user types a new letter
+        clearTimeout(timeout);
+
+        // Set a new timer to wait 300ms after the last keystroke before sending request
+        timeout = setTimeout(() => {
             socket.emit('realtime_translate', {
                 text: inputArea.value,
                 src_lang: srcLang.value,
                 dest_lang: destLang.value
             });
-        });
+        }, 300);
+    });
 
-        // Update the screen when translation arrives
-        socket.on('update_result', (data) => {
-            if(outputArea) {
-                outputArea.innerText = data.translated_text;
-            }
+    // 📋 FEATURE 1: Copy to Clipboard Functionality
+    function copyTranslation() {
+        if (!outputArea || !outputArea.innerText.trim()) return;
+        
+        navigator.clipboard.writeText(outputArea.innerText).then(() => {
+            alert("Translation copied to clipboard!");
+        }).catch(err => {
+            console.error("Could not copy text: ", err);
         });
-        let timeout = null;
+    }
 
-inputArea.addEventListener('input', () => {
-    // Clear the timer every time the user types a new letter
-    clearTimeout(timeout);
+    // 🔊 FEATURE 2: Browser Text-to-Speech Functionality
+    function listenTranslation() {
+        if (!outputArea || !outputArea.innerText.trim()) return;
 
-    // Set a new timer to wait 300ms after the last keystroke
-    timeout = setTimeout(() => {
-        socket.emit('realtime_translate', {
-            text: inputArea.value,
-            src_lang: srcLang.value,
-            dest_lang: destLang.value
-        });
-    }, 300); // 300ms is the "sweet spot" for real-time feel
-});
-    </script>
+        // Stop any running speech instantly
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(outputArea.innerText);
+        
+        // Find matching language speech code or fall back to English
+        const selectedDestName = destLang.value;
+        utterance.lang = SPEECH_LANG_CODES[selectedDestName] || "en-US";
+        
+        window.speechSynthesis.speak(utterance);
+    }
+</script>
     
 </body>
 </html>
