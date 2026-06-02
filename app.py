@@ -1,3 +1,7 @@
+# MUST BE THE ABSOLUTE FIRST TWO LINES IN THE FILE
+import eventlet
+eventlet.monkey_patch()
+
 from flask import Flask, render_template, request, send_file
 from flask_socketio import SocketIO, emit
 import os
@@ -5,16 +9,16 @@ from translator import translate_text
 from file_handler import read_txt, read_pdf, read_docx, write_txt
 from googletrans import Translator
 
+# Initialize Translator cleanly
 translator = Translator()
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
-# CRITICAL FIXES FOR RENDER: Added eventlet mode and explicit CORS
+# Added async_mode explicit configuration
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Languages configuration
 LANGUAGES = {
     "English": "en",
     "Hindi": "hi",
@@ -34,17 +38,16 @@ def handle_realtime(data):
     dest_lang = data.get('dest_lang', 'Hindi')
 
     if text:
-        # Map full names to language codes
         src_code = LANGUAGES.get(src_lang, 'en')
         dest_code = LANGUAGES.get(dest_lang, 'hi')
         
         try:
-            # Direct usage of stable googletrans library
+            # Using clean googletrans library processing
             translated = translator.translate(text, src=src_code, dest=dest_code)
             emit('update_result', {'translated_text': translated.text})
         except Exception as e:
             emit('update_result', {'translated_text': f"Translation Error: {str(e)}"})
-            
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     translated_text = ""
@@ -112,7 +115,6 @@ def upload_file():
     except Exception as e:
         return f"An error occurred during translation: {str(e)}", 500
 
-# CRITICAL FIX FOR 502 BAD GATEWAY: Binds to Render's dynamic port environment
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port)
