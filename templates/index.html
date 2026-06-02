@@ -170,8 +170,7 @@
             console.error("Could not copy text: ", err);
         });
     }
-
-    // 🔊 FEATURE 2: Browser Text-to-Speech Functionality
+    // 🔊 FEATURE 2: Browser Text-to-Speech Functionality with Male Voice Preference
     function listenTranslation() {
         if (!outputArea || !outputArea.innerText.trim()) return;
 
@@ -182,10 +181,39 @@
         
         // Find matching language speech code or fall back to English
         const selectedDestName = destLang.value;
-        utterance.lang = SPEECH_LANG_CODES[selectedDestName] || "en-US";
+        const targetLangCode = SPEECH_LANG_CODES[selectedDestName] || "en-US";
+        utterance.lang = targetLangCode;
+        
+        // Find an available male voice on the current device for this language
+        const availableVoices = window.speechSynthesis.getVoices();
+        
+        // Filter voices matching our language code
+        const langVoices = availableVoices.filter(voice => 
+            voice.lang.toLowerCase().replace('_', '-') === targetLangCode.toLowerCase() ||
+            voice.lang.toLowerCase().startsWith(targetLangCode.toLowerCase().split('-')[0])
+        );
+
+        if (langVoices.length > 0) {
+            // Look for voices explicitly named "male", "google", or specific system male identifiers
+            // On Windows/Google Chrome, male voices usually contain "David", "Mark", or "Google"
+            let maleVoice = langVoices.find(voice => 
+                voice.name.toLowerCase().includes('male') || 
+                voice.name.toLowerCase().includes('david') || 
+                voice.name.toLowerCase().includes('mark') ||
+                voice.name.toLowerCase().includes('ravi')
+            );
+
+            // If no explicit male keyword is found, pick the first available voice as backup
+            utterance.voice = maleVoice || langVoices[0];
+        }
         
         window.speechSynthesis.speak(utterance);
     }
+
+    // Chrome/Android workaround: Chrome loads voices asynchronously, so we ensure they are cached
+    if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+    }   
 </script>
     
 </body>
