@@ -117,4 +117,8 @@ def upload_file():
 
 # Keep your socketio setup the same
 if __name__ == "__main__":
-    socketio.run(app)
+    port = int(os.environ.get("PORT", 5000))
+    
+    # 0.0.0.0 tells the server to accept external requests (critical for Render)
+    socketio.run(app, host='0.0.0.0', port=port)
+    
