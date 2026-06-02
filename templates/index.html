@@ -170,7 +170,7 @@
             console.error("Could not copy text: ", err);
         });
     }
-    // 🔊 FEATURE 2: Browser Text-to-Speech Functionality with Male Voice Preference
+   // 🔊 FEATURE 2: High-Compatibility Male Voice Text-to-Speech
     function listenTranslation() {
         if (!outputArea || !outputArea.innerText.trim()) return;
 
@@ -179,41 +179,51 @@
 
         const utterance = new SpeechSynthesisUtterance(outputArea.innerText);
         
-        // Find matching language speech code or fall back to English
         const selectedDestName = destLang.value;
         const targetLangCode = SPEECH_LANG_CODES[selectedDestName] || "en-US";
         utterance.lang = targetLangCode;
         
-        // Find an available male voice on the current device for this language
+        // Get all available system voices
         const availableVoices = window.speechSynthesis.getVoices();
         
-        // Filter voices matching our language code
+        // Filter voices that match our language code prefix (e.g., matching "hi" or "en")
         const langVoices = availableVoices.filter(voice => 
             voice.lang.toLowerCase().replace('_', '-') === targetLangCode.toLowerCase() ||
             voice.lang.toLowerCase().startsWith(targetLangCode.toLowerCase().split('-')[0])
         );
 
         if (langVoices.length > 0) {
-            // Look for voices explicitly named "male", "google", or specific system male identifiers
-            // On Windows/Google Chrome, male voices usually contain "David", "Mark", or "Google"
-            let maleVoice = langVoices.find(voice => 
-                voice.name.toLowerCase().includes('male') || 
-                voice.name.toLowerCase().includes('david') || 
-                voice.name.toLowerCase().includes('mark') ||
-                voice.name.toLowerCase().includes('ravi')
-            );
+            // High-precision list of keywords used by operating systems for Male voices
+            const maleKeywords = [
+                'david', 'mark', 'george', 'ravi', 'hemant', 'harsh', 'madhur', 
+                'male', 'man', 'boy', 'guy', 'voice1', 'voice 1', 'cloudnaturala'
+            ];
 
-            // If no explicit male keyword is found, pick the first available voice as backup
-            utterance.voice = maleVoice || langVoices[0];
+            // Scan through our filtered language voices to see if any match a male keyword
+            let selectedVoice = langVoices.find(voice => {
+                const voiceNameLower = voice.name.toLowerCase();
+                return maleKeywords.some(keyword => voiceNameLower.includes(keyword));
+            });
+
+            // Fallback strategy: If no specific male identifier matches, 
+            // look for Microsoft or Google native localized system packages
+            if (!selectedVoice) {
+                selectedVoice = langVoices.find(voice => 
+                    voice.name.toLowerCase().includes('google') || 
+                    voice.name.toLowerCase().includes('microsoft')
+                );
+            }
+
+            // Absolute fallback: If everything else fails, use the device default for that language
+            utterance.voice = selectedVoice || langVoices[0];
         }
+        
+        // Adjust pitch slightly lower to help force a masculine depth if a neutral voice is pulled
+        utterance.pitch = 0.85; 
+        utterance.rate = 0.95; // Slightly slower for crisp clear pronunciation
         
         window.speechSynthesis.speak(utterance);
     }
-
-    // Chrome/Android workaround: Chrome loads voices asynchronously, so we ensure they are cached
-    if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
-        speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
-    }   
 </script>
     
 </body>
