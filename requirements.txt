@@ -1,15 +1,10 @@
-gunicorn
-eventlet
-flask
-flask-socketio
-googletrans==3.1.0a0
-python-engineio==4.13.1
-python-socketio==5.16.1
-pdfplumber
-python-docx
 gunicorn==21.2.0
 eventlet==0.35.2
-flask-socketio==5.3.6
 flask==3.0.0
+flask-socketio==5.3.6
+python-engineio==4.13.1
+python-socketio==5.16.1
 googletrans==4.0.0-rc1
+pdfplumber
+python-docx
 
