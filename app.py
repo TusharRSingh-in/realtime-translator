@@ -34,16 +34,17 @@ def handle_realtime(data):
     dest_lang = data.get('dest_lang', 'Hindi')
 
     if text:
-        src_code = LANGUAGES.get(src_lang)
-        dest_code = LANGUAGES.get(dest_lang)
+        # Map full names to language codes
+        src_code = LANGUAGES.get(src_lang, 'en')
+        dest_code = LANGUAGES.get(dest_lang, 'hi')
         
         try:
-            # Using your friend's original translate_text module logic
-            translated = translate_text(text, src_code, dest_code)
-            emit('update_result', {'translated_text': translated})
+            # Direct usage of stable googletrans library
+            translated = translator.translate(text, src=src_code, dest=dest_code)
+            emit('update_result', {'translated_text': translated.text})
         except Exception as e:
-            emit('update_result', {'translated_text': f"Error: {str(e)}"})
-
+            emit('update_result', {'translated_text': f"Translation Error: {str(e)}"})
+            
 @app.route("/", methods=["GET", "POST"])
 def index():
     translated_text = ""
