@@ -9,10 +9,12 @@ translator = Translator()
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
-socketio = SocketIO(app, cors_allowed_origins="*")
+
+# CRITICAL FIXES FOR RENDER: Added eventlet mode and explicit CORS
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Languages configuration (same as in ui.py)
+# Languages configuration
 LANGUAGES = {
     "English": "en",
     "Hindi": "hi",
@@ -26,10 +28,7 @@ LANGUAGES = {
 }
 
 @socketio.on('realtime_translate')
-
 def handle_realtime(data):
-    translated = translator.translate(data['text'], dest='hi').text
-    emit('update_result', {'translated_text': translated})
     text = data.get('text')
     src_lang = data.get('src_lang', 'English')
     dest_lang = data.get('dest_lang', 'Hindi')
@@ -37,19 +36,21 @@ def handle_realtime(data):
     if text:
         src_code = LANGUAGES.get(src_lang)
         dest_code = LANGUAGES.get(dest_lang)
-        # Calling your imported translate_text function
-        translated = translate_text(text, src_code, dest_code)
-        emit('update_result', {'translated_text': translated})
+        
+        try:
+            # Using your friend's original translate_text module logic
+            translated = translate_text(text, src_code, dest_code)
+            emit('update_result', {'translated_text': translated})
+        except Exception as e:
+            emit('update_result', {'translated_text': f"Error: {str(e)}"})
 
 @app.route("/", methods=["GET", "POST"])
-
 def index():
     translated_text = ""
     original_text = ""
     selected_src = "English"
     selected_dest = "Hindi"
 
-    # Handle Text Translation
     if request.method == "POST" and "translate_text" in request.form:
         original_text = request.form.get("text", "")
         selected_src = request.form.get("src_lang", "English")
@@ -58,7 +59,6 @@ def index():
         if original_text:
             src_code = LANGUAGES.get(selected_src)
             dest_code = LANGUAGES.get(selected_dest)
-            # We don't use progress callback for synchronous web requests
             translated_text = translate_text(original_text, src_code, dest_code)
 
     return render_template(
@@ -84,11 +84,9 @@ def upload_file():
     src_code = LANGUAGES.get(src_lang, "en")
     dest_code = LANGUAGES.get(dest_lang, "hi")
 
-    # Save uploaded file
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
     file.save(filepath)
 
-    # Determine file type and read content
     ext = os.path.splitext(filepath)[1].lower()
     content = ""
 
@@ -102,10 +100,8 @@ def upload_file():
         else:
             return "Unsupported file type. Use .txt, .pdf, or .docx", 400
 
-        # Translate content
         translated_content = translate_text(content, src_code, dest_code)
 
-        # Save and return the translated file
         output_filename = f"{dest_code}-translated-{file.filename}.txt"
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
         write_txt(output_path, translated_content)
@@ -115,10 +111,7 @@ def upload_file():
     except Exception as e:
         return f"An error occurred during translation: {str(e)}", 500
 
-# Keep your socketio setup the same
+# CRITICAL FIX FOR 502 BAD GATEWAY: Binds to Render's dynamic port environment
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    
-    # 0.0.0.0 tells the server to accept external requests (critical for Render)
-    socketio.run(app, host='0.0.0.0', port=port)
-    
+    socketio.run(app, host="0.0.0.0", port=port)
